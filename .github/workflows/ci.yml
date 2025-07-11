@@ -1,0 +1,60 @@
+name: CI
+on:
+  push:
+    branches-ignore:
+      - main
+  workflow_dispatch:
+
+jobs:
+  get-python-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      max_version: ${{ steps.get-versions.outputs.max_version }}
+      matrix: ${{ steps.get-versions.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get versions
+        id: get-versions
+        run: |
+          echo "max_version=$(tail -n 1 .python-versions)" >> $GITHUB_OUTPUT
+          echo "matrix={\"python-version\": $(cat .python-versions | jq -R -s -c 'split("\n")')}" >> $GITHUB_OUTPUT
+
+  ruff-lint-and-format:
+    needs: get-python-versions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python with Poetry
+        uses: ./.github/actions/setup-python-poetry
+        with:
+          python-version: ${{ needs.get-python-versions.outputs.max_version }}
+
+      - name: Run tests
+        run: poetry run pre-commit run --all-files
+
+  pytest:
+    runs-on: ubuntu-latest
+    needs: [get-python-versions, ruff-lint-and-format]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.get-python-versions.outputs.matrix) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python with Poetry
+        uses: ./.github/actions/setup-python-poetry
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Run tests
+        run: poetry run pytest -v --durations=0 --cov --cov-report=xml
+
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
