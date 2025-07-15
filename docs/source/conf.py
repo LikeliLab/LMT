@@ -25,3 +25,9 @@ exclude_patterns = []
 
 html_theme = 'alabaster'
 html_static_path = ['_static']
+
+# Add any Sphinx extension module names here, as strings
+extensions = ['sphinx.ext.napoleon']
+
+# Napoleon settings
+napoleon_google_docstring = True
