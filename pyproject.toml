@@ -1,14 +1,18 @@
 [project]
-name = "python-package-template"
-version = "0.2.0"
+name = "lm"
+version = "0.1.0"
 description = ""
 authors = [
     {name = "Michael Ellis",email = "michaelellis003@gmail.com"}
 ]
 license = {text = "Apache-2.0"}
 readme = "README.md"
-requires-python = ">=3.10" # Update this when changing .python-versions
+requires-python = ">=3.12" # Update this when changing .python-versions
 dependencies = [
+    "tiktoken (>=0.9.0,<0.10.0)",
+    "torch (>=2.7.1,<3.0.0)",
+    "torchvision (>=0.22.1,<0.23.0)",
+    "torchaudio (>=2.7.1,<3.0.0)"
 ]
 
 [tool.poetry.group.dev.dependencies]
@@ -16,13 +20,15 @@ pytest = "^8.3.4"
 pyright = "^1.1.394"
 pytest-cov = "^6.0.0"
 pre-commit = "^4.1.0"
+sphinx = "^8.2.3"
+ipykernel = "^6.29.5"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
-target-version = "py310" # Update this when changing .python-versions
+target-version = "py312" # Update this when changing .python-versions
 line-length = 79
 indent-width = 4
 
@@ -72,6 +78,8 @@ split-on-trailing-comma = true
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["E501"]
+"docs/*" = ["D100"]
+"example_notebooks/*" = ["D104"]
 
 [tool.ruff.format]
 quote-style = "single"
@@ -89,3 +97,4 @@ docstring-code-line-length = "dynamic"
 
 [tool.pyright]
 exclude = ["tests"]
+extraPaths = ["./.venv/lib/python3.13/site-packages"]
