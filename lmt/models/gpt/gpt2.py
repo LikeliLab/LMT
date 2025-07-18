@@ -3,8 +3,8 @@
 import torch
 import torch.nn as nn
 
-from lm.layers.normalization import LayerNorm
-from lm.layers.transformers import TransformerBlock
+from lmt.layers.normalization import LayerNorm
+from lmt.layers.transformers import TransformerBlock
 
 
 class GPT2(nn.Module):
