@@ -22,7 +22,17 @@ from .ff import DefaultFeedForward
 
 
 class TransformerBlock(nn.Module):
-    """Implementation of transformer block for GPT2 model."""
+    """A single block of the Transformer architecture, inspired by GPT-2.
+
+    This block encapsulates the core computations of a Transformer layer:
+    Multi-Head Attention, followed by a FeedForward Network. Both sub-layers
+    are equipped with residual connections and layer normalization, and dropout
+    is applied to the outputs of each sub-layer before the residual addition.
+
+    The architecture can be summarized as:
+    x -> LayerNorm -> MultiHeadAttention -> Dropout -> + (Residual)
+    -> LayerNorm -> FeedForward Network -> Dropout -> + (Residual)
+    """
 
     def __init__(
         self,
@@ -33,18 +43,31 @@ class TransformerBlock(nn.Module):
         qkv_bias: bool = False,
         ff_network: nn.Module | None = None,
     ):
-        """Initialize the Transformer Block.
+        """Initializes a Transformer block.
 
         Args:
-            embed_dim (int): Dimension of token embedding vectors.
-            context_length (int): Max length of input sequence.
-            num_heads (int): Number of attention heads to use.
-            dropout (float): Dropout rate for embedding features.
-            qkv_bias (bool): Whether to use bias in query, key, and value
-                projections.
-            ff_network (nn.Module): Feed forward network to use within the
-                tranformer block.
-
+            embed_dim (int): The dimensionality of the input and output token
+                embedding vectors (e.g., 768 for GPT-2 small). This is often
+                referred to as `d_model` in Transformer literature.
+            context_length (int): The maximum sequence length the model is
+                designed to handle. This determines the size of the causal
+                attention mask.
+            num_heads (int): The number of attention heads to use in the
+                Multi-Head Attention mechanism. The `embed_dim` must be
+                divisible by `num_heads`.
+            dropout (float): The dropout rate to apply after the attention
+                and feed-forward sub-layers, before the residual connection.
+                A common value is 0.1.
+            qkv_bias (bool, optional): If True, biases are added to the
+                query, key, and value linear projections within the
+                MultiHeadAttention module. Defaults to False.
+            ff_network (nn.Module | None, optional): An instance of a custom
+                feed-forward network (FFN) to be used within this Transformer
+                block. This module should accept a tensor of shape
+                `(batch_size, seq_length, embed_dim)` and return a tensor
+                of the same shape. If `None`, a `DefaultFeedForward`
+                instance will be constructed with `hidden_dim = 4 * embed_dim`.
+                Defaults to None.
         """
         super().__init__()
         self.attn = MultiHeadAttention(
@@ -66,7 +89,26 @@ class TransformerBlock(nn.Module):
         self.dropout_shortcut = nn.Dropout(dropout)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass of the Transformer Block."""
+        """Performs the forward pass of the Transformer Block.
+
+        The input `x` flows through the Multi-Head Attention sub-layer
+        and then the FeedForward Network sub-layer. Both sub-layers
+        include pre-layer normalization and residual connections, with
+        dropout applied after each sub-layer.
+
+        Args:
+            x (torch.Tensor): The input tensor to the Transformer block.
+                Expected shape is `(batch_size, sequence_length, embed_dim)`.
+                This tensor typically represents token embeddings, often
+                combined with positional embeddings.
+
+        Returns:
+            torch.Tensor: The output tensor from the Transformer block,
+                with the same shape as the input:
+                `(batch_size, sequence_length, embed_dim)`. This output
+                can then be fed into the next Transformer block or a final
+                prediction layer.
+        """
         # Multi-Head Attention
         shortcut = x
         x = self.norm1(x)
