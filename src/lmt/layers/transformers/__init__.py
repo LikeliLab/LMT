@@ -14,6 +14,7 @@
 
 """Sub-package containing transformer layers and utilities."""
 
+from .ff import DefaultFeedForward
 from .transformer import TransformerBlock
 
-__all__ = ['TransformerBlock']
+__all__ = ['TransformerBlock', 'DefaultFeedForward']
