@@ -28,10 +28,6 @@ class TransformerBlock(nn.Module):
     Multi-Head Attention, followed by a FeedForward Network. Both sub-layers
     are equipped with residual connections and layer normalization, and dropout
     is applied to the outputs of each sub-layer before the residual addition.
-
-    The architecture can be summarized as:
-    x -> LayerNorm -> MultiHeadAttention -> Dropout -> + (Residual)
-    -> LayerNorm -> FeedForward Network -> Dropout -> + (Residual)
     """
 
     def __init__(
@@ -47,8 +43,7 @@ class TransformerBlock(nn.Module):
 
         Args:
             embed_dim (int): The dimensionality of the input and output token
-                embedding vectors (e.g., 768 for GPT-2 small). This is often
-                referred to as `d_model` in Transformer literature.
+                embedding vectors.
             context_length (int): The maximum sequence length the model is
                 designed to handle. This determines the size of the causal
                 attention mask.
