@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Implementation of causal attention mechanism."""
+"""Implementation of Causal Attention layer."""
 
 import torch
 import torch.nn as nn
@@ -67,14 +67,14 @@ class CausalAttention(nn.Module):
                 attention mechanism with a causal mask and the same dimension
                 as the input (batch_size, seq_length, embed_dim).
         """
-        _, num_tokens, _ = x.shape
+        _, seq_length, _ = x.shape
         keys = self.W_key(x)
         queries = self.W_query(x)
         values = self.W_value(x)
 
         attn_scores = queries @ keys.transpose(-2, -1)
         attn_scores.masked_fill_(
-            self.mask.bool()[:num_tokens, :num_tokens], -torch.inf
+            self.mask.bool()[:seq_length, :seq_length], -torch.inf
         )
         attn_weights = torch.softmax(
             attn_scores / keys.shape[-1] ** 0.5, dim=-1

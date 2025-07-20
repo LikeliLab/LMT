@@ -26,59 +26,88 @@ class MultiHeadAttention(nn.Module):
 
     def __init__(
         self,
-        d_in: int,
-        d_out: int,
+        embed_dim: int,
         context_length: int,
-        dropout: float,
         num_heads: int,
         qkv_bias: bool = False,
     ):
-        """Initialize the Multi-Head Attention layer."""
+        """Initialize the Multi-Head Attention layer.
+
+        Instead of a single attention "head' as in the SelfAttention or
+        CausalAttention classes, MultiHeadAttention calculates attention
+        weights using `num_heads` self-attention mechanisms each
+        with causal masks in parallel. The output of the `num_heads`
+        self-attention
+        machanisms are concatenated together and applied to the queries
+        to produce the context vectors.
+
+
+        Args:
+            embed_dim (int): Dimension of token embedding vectors.
+            context_length (int): Max length of input sequence.
+            num_heads (int): Number of attention heads to use.
+            qkv_bias (bool): Whether to use bias in query, key, and value
+                projections.
+        """
         super().__init__()
-        assert d_out % num_heads == 0, 'd_out must be divisible by num_heads'
+        assert embed_dim % num_heads == 0, (
+            'd_out must be divisible by num_heads'
+        )
 
-        self.d_out = d_out
         self.num_heads = num_heads
-        self.head_dim = d_out // num_heads
+        self.head_dim = embed_dim // num_heads
 
-        self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.W_key = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.W_value = nn.Linear(d_in, d_out, bias=qkv_bias)
+        self.W_query = nn.Linear(embed_dim, embed_dim, bias=qkv_bias)
+        self.W_key = nn.Linear(embed_dim, embed_dim, bias=qkv_bias)
+        self.W_value = nn.Linear(embed_dim, embed_dim, bias=qkv_bias)
 
-        self.out_proj = nn.Linear(d_out, d_out)
-        self.dropout = nn.Dropout(dropout)
+        self.out_proj = nn.Linear(embed_dim, embed_dim)
+
         self.register_buffer(
             'mask',
             torch.triu(torch.ones(context_length, context_length), diagonal=1),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass of the Multi-Head Attention layer."""
-        b, num_tokens, d_in = x.shape
+        """Forward pass of the Multi-Head Attention layer.
+
+        Args:
+            x (torch.Tensor): Token embedding vectors with shape (batch_size,
+                seq_length, embed_dim). Assumed to have position vectors
+                added previously or no position vectors will be added.
+
+        Returns:
+            torch.Tensor: Context vector, a reweighting of the input token
+                embedding vectors according to the multi-head scaled
+                dot-product attention mechanism with a causal mask and the
+                same dimension as the input (batch_size, seq_length,
+                embed_dim).
+
+        """
+        b, seq_length, _ = x.shape
 
         keys = self.W_key(x)
         queries = self.W_query(x)
         values = self.W_value(x)
 
-        keys = keys.view(b, num_tokens, self.num_heads, self.head_dim)
-        queries = queries.view(b, num_tokens, self.num_heads, self.head_dim)
-        values = values.view(b, num_tokens, self.num_heads, self.head_dim)
+        keys = keys.view(b, seq_length, self.num_heads, self.head_dim)
+        queries = queries.view(b, seq_length, self.num_heads, self.head_dim)
+        values = values.view(b, seq_length, self.num_heads, self.head_dim)
 
         keys = keys.transpose(1, 2)
         queries = queries.transpose(1, 2)
         values = values.transpose(1, 2)
 
         attn_scores = queries @ keys.transpose(2, 3)
-        mask_bool = self.mask.bool()[:num_tokens, :num_tokens]
+        mask_bool = self.mask.bool()[:seq_length, :seq_length]
         attn_scores.masked_fill_(mask_bool, -torch.inf)
 
         attn_weights = torch.softmax(
             attn_scores / keys.shape[-1] ** 0.5, dim=-1
         )
-        attn_weights = self.dropout(attn_weights)
 
         context_vec = (attn_weights @ values).transpose(1, 2)
-        context_vec = context_vec.contiguous().view(b, num_tokens, self.d_out)
+        context_vec = context_vec.contiguous().view(b, seq_length, self.d_out)
         context_vec = self.out_proj(context_vec)
 
         return context_vec
