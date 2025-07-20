@@ -33,7 +33,7 @@ class MultiHeadAttention(nn.Module):
     ):
         """Initialize the Multi-Head Attention layer.
 
-        Instead of a single attention "head' as in the SelfAttention or
+        Instead of a single attention 'head' as in the SelfAttention or
         CausalAttention classes, MultiHeadAttention calculates attention
         weights using `num_heads` self-attention mechanisms each
         with causal masks in parallel. The output of the `num_heads`

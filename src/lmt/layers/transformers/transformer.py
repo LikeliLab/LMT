@@ -91,21 +91,16 @@ class TransformerBlock(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Performs the forward pass of the Transformer Block.
 
-        The input `x` flows through the Multi-Head Attention sub-layer
-        and then the FeedForward Network sub-layer. Both sub-layers
-        include pre-layer normalization and residual connections, with
-        dropout applied after each sub-layer.
-
         Args:
             x (torch.Tensor): The input tensor to the Transformer block.
-                Expected shape is `(batch_size, sequence_length, embed_dim)`.
+                Expected shape is `(batch_size, seq_length, embed_dim)`.
                 This tensor typically represents token embeddings, often
                 combined with positional embeddings.
 
         Returns:
             torch.Tensor: The output tensor from the Transformer block,
                 with the same shape as the input:
-                `(batch_size, sequence_length, embed_dim)`. This output
+                `(batch_size, seq_length, embed_dim)`. This output
                 can then be fed into the next Transformer block or a final
                 prediction layer.
         """
