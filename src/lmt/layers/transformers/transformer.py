@@ -61,8 +61,8 @@ class TransformerBlock(nn.Module):
                 block. This module should accept a tensor of shape
                 `(batch_size, seq_length, embed_dim)` and return a tensor
                 of the same shape. If `None`, a `DefaultFeedForward`
-                instance will be constructed with `hidden_dim = 4 * embed_dim`.
-                Defaults to None.
+                instance will be constructed with `hidden_dim = 4 * embed_dim`
+                and GELU activation function. Defaults to None.
         """
         super().__init__()
         self.attn = MultiHeadAttention(
