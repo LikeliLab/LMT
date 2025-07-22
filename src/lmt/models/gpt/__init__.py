@@ -1,1 +1,5 @@
-"""Implementation of (roughly) various GPT architectures with a few updates."""
+"""Implementation of various GPT architectures."""
+
+from gpt import GPT
+
+__all__ = ['GPT']

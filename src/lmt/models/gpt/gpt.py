@@ -79,7 +79,19 @@ class GPT(nn.Module):
         self.out_head = nn.Linear(embed_dim, vocab_size, bias=False)
 
     def forward(self, in_idx: torch.Tensor) -> torch.Tensor:
-        """Forward pass through the GPT2 model."""
+        """Performs the forward pass of the GPT model.
+
+        This method processes an input tensor of token indices through the
+        model to generate logits for the next token prediction.
+
+        Args:
+            in_idx (torch.Tensor): A tensor of token indices.
+                Shape: `(batch_size, seq_length)`.
+
+        Returns:
+            torch.Tensor: The output logits from the model.
+                Shape: `(batch_size, seq_length, vocab_size)`.
+        """
         _, seq_length = in_idx.shape
         tok_embeds = self.tok_embed(in_idx)
         pos_embeds = self.pos_embed(
