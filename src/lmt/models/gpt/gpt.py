@@ -11,6 +11,7 @@ import torch
 import torch.nn as nn
 
 from lmt.layers.transformers import TransformerBlock
+from lmt.models import ModelConfig
 
 
 class GPT(nn.Module):
@@ -23,60 +24,34 @@ class GPT(nn.Module):
     followed by a linear layer to produce the final logits over the vocabulary.
     """
 
-    def __init__(
-        self,
-        embed_dim: int,
-        context_length: int,
-        vocab_size: int,
-        num_heads: int,
-        n_layers: int,
-        dropout: float,
-        qkv_bias: bool = False,
-        ff_network: nn.Module | None = None,
-    ):
+    def __init__(self, model_config: ModelConfig):
         """Initializes the GPT model.
 
         Args:
-            embed_dim (int): The dimensionality of the token and positional
-                embeddings, and the hidden size of the transformer blocks.
-            context_length (int): The maximum sequence length that the model
-                can process. This defines the size of the positional embedding
-                table.
-            vocab_size (int): The total number of unique tokens in the
-                vocabulary. This determines the size of the token embedding
-                table and the output dimension of the final linear layer.
-            num_heads (int): The number of attention heads within each
-                transformer block. `embed_dim` must be divisible by this value.
-            n_layers (int): The number of `TransformerBlock` layers to stack.
-            dropout (float): The dropout rate applied to the embeddings.
-            qkv_bias (bool, optional): If True, enables bias in the query, key,
-                and value projections within the attention mechanism of each
-                transformer block. Defaults to False.
-            ff_network (nn.Module | None, optional): A custom feed-forward
-                network to be used within each transformer block. If None, a
-                default feed-forward network will be used. Defaults to None.
+            model_config (ModelConfig): Configuration object containing model
+                hyperparameters such as vocabulary size, embedding dimension,
+                context length, number of layers, and dropout rate.
         """
         super().__init__()
-        self.tok_embed = nn.Embedding(vocab_size, embed_dim)
-        self.pos_embed = nn.Embedding(context_length, embed_dim)
-        self.dropout_embed = nn.Dropout(dropout)
+        self.tok_embed = nn.Embedding(
+            model_config.vocab_size, model_config.embed_dim
+        )
+        self.pos_embed = nn.Embedding(
+            model_config.context_length, model_config.embed_dim
+        )
+        self.dropout_embed = nn.Dropout(model_config.dropout)
 
         self.transformer_blocks = nn.Sequential(
             *[
-                TransformerBlock(
-                    embed_dim=embed_dim,
-                    context_length=context_length,
-                    num_heads=num_heads,
-                    dropout=dropout,
-                    qkv_bias=qkv_bias,
-                    ff_network=ff_network,
-                )
-                for _ in range(n_layers)
+                TransformerBlock(model_config=model_config)
+                for _ in range(model_config.n_layers)
             ]
         )
 
-        self.final_norm = nn.LayerNorm(embed_dim)
-        self.out_head = nn.Linear(embed_dim, vocab_size, bias=False)
+        self.final_norm = nn.LayerNorm(model_config.embed_dim)
+        self.out_head = nn.Linear(
+            model_config.embed_dim, model_config.vocab_size, bias=False
+        )
 
     def forward(self, in_idx: torch.Tensor) -> torch.Tensor:
         """Performs the forward pass of the GPT model.

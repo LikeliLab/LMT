@@ -17,6 +17,8 @@
 import torch
 import torch.nn as nn
 
+from lmt.models.config import ModelConfig
+
 
 class MultiHeadAttention(nn.Module):
     """Multi-Head Attention Layer."""
@@ -24,13 +26,7 @@ class MultiHeadAttention(nn.Module):
     # Correctly type self.mask as a Tensor
     mask: torch.Tensor
 
-    def __init__(
-        self,
-        embed_dim: int,
-        context_length: int,
-        num_heads: int,
-        qkv_bias: bool = False,
-    ):
+    def __init__(self, model_config: ModelConfig):
         """Initialize the Multi-Head Attention layer.
 
         Instead of a single attention 'head' as in the SelfAttention or
@@ -43,29 +39,46 @@ class MultiHeadAttention(nn.Module):
 
 
         Args:
-            embed_dim (int): Dimension of token embedding vectors.
-            context_length (int): Max length of input sequence.
-            num_heads (int): Number of attention heads to use.
-            qkv_bias (bool): Whether to use bias in query, key, and value
-                projections.
+            model_config (ModelConfig): Configuration object containing model
+                parameters.
+
         """
         super().__init__()
-        assert embed_dim % num_heads == 0, (
+        assert model_config.embed_dim % model_config.num_heads == 0, (
             'd_out must be divisible by num_heads'
         )
 
-        self.num_heads = num_heads
-        self.head_dim = embed_dim // num_heads
+        self.num_heads = model_config.num_heads
+        self.head_dim = model_config.embed_dim // model_config.num_heads
 
-        self.W_query = nn.Linear(embed_dim, embed_dim, bias=qkv_bias)
-        self.W_key = nn.Linear(embed_dim, embed_dim, bias=qkv_bias)
-        self.W_value = nn.Linear(embed_dim, embed_dim, bias=qkv_bias)
+        self.W_query = nn.Linear(
+            model_config.embed_dim,
+            model_config.embed_dim,
+            bias=model_config.qkv_bias,
+        )
+        self.W_key = nn.Linear(
+            model_config.embed_dim,
+            model_config.embed_dim,
+            bias=model_config.qkv_bias,
+        )
+        self.W_value = nn.Linear(
+            model_config.embed_dim,
+            model_config.embed_dim,
+            bias=model_config.qkv_bias,
+        )
 
-        self.out_proj = nn.Linear(embed_dim, embed_dim)
+        self.out_proj = nn.Linear(
+            model_config.embed_dim, model_config.embed_dim
+        )
 
         self.register_buffer(
             'mask',
-            torch.triu(torch.ones(context_length, context_length), diagonal=1),
+            torch.triu(
+                torch.ones(
+                    model_config.context_length, model_config.context_length
+                ),
+                diagonal=1,
+            ),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

@@ -16,7 +16,9 @@
 
 import torch
 import torch.nn as nn
-from attention import MultiHeadAttention
+
+from lmt.layers.attention import MultiHeadAttention
+from lmt.models.config import ModelConfig
 
 from .ff import DefaultFeedForward
 
@@ -30,58 +32,28 @@ class TransformerBlock(nn.Module):
     is applied to the outputs of each sub-layer before the residual addition.
     """
 
-    def __init__(
-        self,
-        embed_dim: int,
-        context_length: int,
-        num_heads: int,
-        dropout: float,
-        qkv_bias: bool = False,
-        ff_network: nn.Module | None = None,
-    ):
+    def __init__(self, model_config: ModelConfig):
         """Initializes a Transformer block.
 
         Args:
-            embed_dim (int): The dimensionality of the input and output token
-                embedding vectors.
-            context_length (int): The maximum sequence length the model is
-                designed to handle. This determines the size of the causal
-                attention mask.
-            num_heads (int): The number of attention heads to use in the
-                Multi-Head Attention mechanism. The `embed_dim` must be
-                divisible by `num_heads`.
-            dropout (float): The dropout rate to apply after the attention
-                and feed-forward sub-layers, before the residual connection.
-                A common value is 0.1.
-            qkv_bias (bool, optional): If True, biases are added to the
-                query, key, and value linear projections within the
-                MultiHeadAttention module. Defaults to False.
-            ff_network (nn.Module | None, optional): An instance of a custom
-                feed-forward network (FFN) to be used within this Transformer
-                block. This module should accept a tensor of shape
-                `(batch_size, seq_length, embed_dim)` and return a tensor
-                of the same shape. If `None`, a `DefaultFeedForward`
-                instance will be constructed with `hidden_dim = 4 * embed_dim`
-                and GELU activation function. Defaults to None.
+            model_config (ModelConfig): Configuration object containing model
+                parameters such as embedding dimension, number of heads,
+                context length, and dropout rate.
         """
         super().__init__()
-        self.attn = MultiHeadAttention(
-            embed_dim=embed_dim,
-            context_length=context_length,
-            num_heads=num_heads,
-            qkv_bias=qkv_bias,
-        )
+        self.attn = MultiHeadAttention(model_config=model_config)
 
-        if ff_network:
-            self.ff = ff_network
+        if model_config.ff_network:
+            self.ff = model_config.ff_network
         else:
             self.ff = DefaultFeedForward(
-                embed_dim=embed_dim, hidden_dim=4 * embed_dim
+                embed_dim=model_config.embed_dim,
+                hidden_dim=4 * model_config.embed_dim,
             )
 
-        self.norm1 = nn.LayerNorm(embed_dim)
-        self.norm2 = nn.LayerNorm(embed_dim)
-        self.dropout_shortcut = nn.Dropout(dropout)
+        self.norm1 = nn.LayerNorm(model_config.embed_dim)
+        self.norm2 = nn.LayerNorm(model_config.embed_dim)
+        self.dropout_shortcut = nn.Dropout(model_config.dropout)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Performs the forward pass of the Transformer Block.
