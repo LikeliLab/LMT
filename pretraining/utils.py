@@ -8,9 +8,9 @@ import torch.nn as nn
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
-from lmt.pretraining.dataset import GPTDataset
 from lmt.tokenizer import BaseTokenizer
 from lmt.tokenizer.bpe import BPETokenizer
+from pretraining.dataset import GPTDataset
 
 
 def read_text_file(file_path: Path) -> str:

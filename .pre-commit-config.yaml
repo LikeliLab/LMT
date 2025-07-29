@@ -11,8 +11,10 @@ repos:
     rev: v0.9.7
     hooks:
       - id: ruff
+        additional_dependencies: ['.']
         args: [ --fix ]
       - id: ruff-format
+        additional_dependencies: ['.']
   - repo: https://github.com/RobertCraigie/pyright-python
     rev: v1.1.394
     hooks:

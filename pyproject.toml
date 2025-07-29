@@ -31,6 +31,7 @@ requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
+src = ["src"]
 target-version = "py312" # Update this when changing .python-versions
 line-length = 79
 indent-width = 4
@@ -100,4 +101,4 @@ docstring-code-line-length = "dynamic"
 
 [tool.pyright]
 exclude = ["tests"]
-extraPaths = ["./.venv/lib/python3.13/site-packages"]
+extraPaths = ["./.venv/lib/python3.13/site-packages", "src"]

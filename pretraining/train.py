@@ -1,23 +1,26 @@
 """Script for training LLM."""
 
 import argparse
+import os
 from pathlib import Path
 
 import torch
 
 from lmt.models.config import ModelConfig
 from lmt.models.gpt import GPT
-from lmt.pretraining.utils import (
+from lmt.tokenizer.bpe import BPETokenizer
+from pretraining.utils import (
     create_dataloader,
     plot_losses,
     read_text_file,
     train,
 )
-from lmt.tokenizer.bpe import BPETokenizer
 
 
 def main(args):
     """Main function to orchestrate the model training pipeline."""
+    print(os.getcwd())
+
     # --- 1. Setup and Configuration ---
 
     # Create the save directory if it doesn't exist
@@ -126,13 +129,13 @@ if __name__ == '__main__':
     data_group.add_argument(
         '--data_file',
         type=str,
-        default='data/the-verdict.txt',
+        default='pretraining/data/the-verdict.txt',
         help='Path to the input text file.',
     )
     data_group.add_argument(
         '--save_dir',
         type=str,
-        default='runs',
+        default='pretraining/runs',
         help='Directory to save model checkpoints.',
     )
 
