@@ -2,8 +2,10 @@
 
 import tiktoken
 
+from .base import BaseTokenizer
 
-class BPETokenizer:
+
+class BPETokenizer(BaseTokenizer):
     """Byte Pair Encoding (BPE) tokenizer class.
 
     Using OpenAI's tiktoken library for tokenization.
@@ -24,6 +26,6 @@ class BPETokenizer:
             text, allowed_special=self.allowed_special
         )
 
-    def decode(self, encoded_text: list[int]) -> str:
+    def decode(self, token_ids: list[int]) -> str:
         """Decodes the encoded text back to original tokens."""
-        return self.tokenizer.decode(encoded_text)
+        return self.tokenizer.decode(token_ids)

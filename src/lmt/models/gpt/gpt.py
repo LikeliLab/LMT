@@ -44,7 +44,7 @@ class GPT(nn.Module):
         self.transformer_blocks = nn.Sequential(
             *[
                 TransformerBlock(model_config=model_config)
-                for _ in range(model_config.n_layers)
+                for _ in range(model_config.num_layers)
             ]
         )
 

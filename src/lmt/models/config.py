@@ -22,25 +22,26 @@ from torch.nn import Module
 class ModelConfig:
     """Configuration for the model architecture.
 
-    Args:
-    context_length (int):
-        Max sequence length (context window).
-    vocab_size (int): Vocabulary size, e.g., GPT-2 vocab size.
-    n_layers (int): Number of transformer blocks.
-    num_heads (int): Number of attention heads.
-    embed_dim (int): Embedding dimension.
-    dropout (float):
-    qkv_bias (bool, optional): If True, enables bias in the query, key,
+    Attributes:
+        context_length (int): Max sequence length (context window).
+        vocab_size (int): Vocabulary size, e.g., GPT-2 vocab size.
+        num_layers (int): Number of transformer blocks.
+        num_heads (int): Number of attention heads.
+        embed_dim (int): Embedding dimension.
+        dropout (float): Probability of a weight to be zeroed. Regularization
+            technique to prevent overfitting. Must be a float between 0.0
+            and 1.0.
+        qkv_bias (bool, optional): If True, enables bias in the query, key,
                 and value projections within the attention mechanism of each
                 transformer block. Defaults to False.
-    ff_network (nn.Module | None, optional): A custom feed-forward
-        network to be used within each transformer block. If None, a
-        default feed-forward network will be used. Defaults to None.
+        ff_network (nn.Module | None, optional): A custom feed-forward
+            network to be used within each transformer block. If None, a
+            default feed-forward network will be used. Defaults to None.
     """
 
-    context_length: int = 256
+    context_length: int = 4
     vocab_size: int = 50257
-    n_layers: int = 12
+    num_layers: int = 12
     num_heads: int = 12
     embed_dim: int = 768
     dropout: float = 0.1

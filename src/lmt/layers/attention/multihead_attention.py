@@ -45,9 +45,9 @@ class MultiHeadAttention(nn.Module):
         """
         super().__init__()
         assert model_config.embed_dim % model_config.num_heads == 0, (
-            'd_out must be divisible by num_heads'
+            'embed_dim must be divisible by num_heads'
         )
-
+        self.embed_dim = model_config.embed_dim
         self.num_heads = model_config.num_heads
         self.head_dim = model_config.embed_dim // model_config.num_heads
 
@@ -120,7 +120,9 @@ class MultiHeadAttention(nn.Module):
         )
 
         context_vec = (attn_weights @ values).transpose(1, 2)
-        context_vec = context_vec.contiguous().view(b, seq_length, self.d_out)
+        context_vec = context_vec.contiguous().view(
+            b, seq_length, self.embed_dim
+        )
         context_vec = self.out_proj(context_vec)
 
         return context_vec
