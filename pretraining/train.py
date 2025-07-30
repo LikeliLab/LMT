@@ -1,7 +1,6 @@
 """Script for training LLM."""
 
 import argparse
-import os
 from pathlib import Path
 
 import torch
@@ -19,8 +18,6 @@ from pretraining.utils import (
 
 def main(args):
     """Main function to orchestrate the model training pipeline."""
-    print(os.getcwd())
-
     # --- 1. Setup and Configuration ---
 
     # Create the save directory if it doesn't exist
@@ -110,9 +107,15 @@ def main(args):
 
     # --- 6. Save the Final Model ---
 
-    model_save_path = save_dir / 'final_model.pth'
-    print(f'Saving final model to {model_save_path}')
-    torch.save(model.state_dict(), model_save_path)
+    model_save_path = save_dir / 'model_and_optimizer.pth'
+    print(f'Saving model and optimizer to {model_save_path}')
+    torch.save(
+        {
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+        },
+        model_save_path,
+    )
 
 
 if __name__ == '__main__':
