@@ -208,36 +208,49 @@ def evaluate_model(
     return train_loss, val_loss
 
 
-def generate_text(
+def generate(
     model: nn.Module,
     idx: torch.Tensor,
     max_new_tokens: int,
     context_size: int | torch.Tensor,
+    temperature: float = 1.0,
+    top_k: int | None = None,
+    eos_id: str | None = None,
 ):
-    """Generates a sequence of token IDs using greedy decoding.
+    """Generates a sequence of token IDs based on a prompt.
 
-    This function iteratively predicts the next token in a sequence by choosing
-    the token with the highest probability (logit) at each step. It appends
-    the predicted token ID to the sequence and uses the updated sequence as
-    input for the next prediction. See:
-    https://github.com/rasbt/LLMs-from-scratch/blob/main/ch05/01_main-chapter-code/previous_chapters.py
+    This function iteratively predicts the next token in a sequence using the
+    provided model. It supports different decoding strategies, including greedy
+    decoding, temperature-based sampling, and top-k sampling. The generation
+    process can be stopped prematurely if an end-of-sequence (EOS) token is
+    produced.
 
     Args:
         model (nn.Module): The transformer model to use for generation.
         idx (torch.Tensor): The initial sequence of token IDs, representing the
             prompt. Shape: (batch_size, sequence_length).
-        max_new_tokens (int): The maximum number of new tokens to generate and
-            append to the input sequence.
-        context_size (int | torch.Tensor): The maximum number of tokens the
-            model can use as context. The input sequence `idx` will be cropped
-            to this size from the right if it's too long.
+        max_new_tokens (int): The maximum number of new tokens to generate.
+        context_size (int | torch.Tensor): The model's context window size. The
+            input sequence will be cropped from the left to this size if it is
+            too long.
+        temperature (float, optional): Controls the randomness of the
+            predictions. A value of 0.0 corresponds to greedy decoding (always
+            picking the most likely token). Higher values increase randomness.
+            Defaults to 1.0.
+        top_k (int | None, optional): If set, the model's predictions are
+            filtered to the `k` most likely next tokens before sampling.
+            This can help reduce the chance of generating low-probability
+            tokens. Defaults to None.
+        eos_id (str | None, optional): The token ID that signifies the end of a
+            sequence. If this token is generated, the function will stop
+            generating new tokens. Defaults to None.
 
     Returns:
         torch.Tensor: The generated sequence of token IDs, which includes the
-            original prompt plus the newly generated tokens.
-            Shape: (batch_size, sequence_length + max_new_tokens).
+            original prompt plus the newly generated tokens. The length of the
+            newly generated part is at most `max_new_tokens`. Shape:
+            (batch_size, sequence_length + num_generated_tokens).
     """
-    # idx is (B, T) array of indices in the current context
     for _ in range(max_new_tokens):
         # Crop current context if it exceeds the supported context size
         # E.g., if LLM supports only 5 tokens, and the context size is 10
@@ -252,8 +265,25 @@ def generate_text(
         # (batch, n_token, vocab_size) becomes (batch, vocab_size)
         logits = logits[:, -1, :]
 
-        # Get the idx of the vocab entry with the highest logits value
-        idx_next = torch.argmax(logits, dim=-1, keepdim=True)  # (batch, 1)
+        if top_k is not None:
+            top_logits, _ = torch.topk(logits, top_k)
+            min_val = top_logits[:, -1]
+            logits = torch.where(
+                logits < min_val,
+                torch.tensor(float('-inf')).to(logits.device),
+                logits,
+            )
+
+        if temperature > 0.0:
+            logits = logits / temperature
+            probs = torch.softmax(logits, dim=-1)
+            idx_next = torch.multinomial(probs, num_samples=1)
+        else:
+            # Get the idx of the vocab entry with the highest logits value
+            idx_next = torch.argmax(logits, dim=-1, keepdim=True)  # (batch, 1)
+
+        if idx_next == eos_id:
+            break
 
         # Append sampled index to the running sequence
         idx = torch.cat((idx, idx_next), dim=1)  # (batch, n_tokens+1)
@@ -289,7 +319,7 @@ def generate_and_print_sample(
     encoded = torch.tensor(encoded).unsqueeze(0).to(device)
 
     with torch.no_grad():
-        token_ids = generate_text(
+        token_ids = generate(
             model=model,
             idx=encoded,
             max_new_tokens=50,
