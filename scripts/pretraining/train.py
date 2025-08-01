@@ -8,7 +8,7 @@ import torch
 from lmt.models.config import ModelConfig
 from lmt.models.gpt import GPT
 from lmt.tokenizer.bpe import BPETokenizer
-from pretraining.utils import (
+from scripts.pretraining.utils import (
     create_dataloader,
     plot_losses,
     read_text_file,
@@ -132,13 +132,13 @@ if __name__ == '__main__':
     data_group.add_argument(
         '--data_file',
         type=str,
-        default='pretraining/data/the-verdict.txt',
+        default='scripts/pretraining/data/the-verdict.txt',
         help='Path to the input text file.',
     )
     data_group.add_argument(
         '--save_dir',
         type=str,
-        default='pretraining/runs',
+        default='scripts/pretraining/runs',
         help='Directory to save model checkpoints.',
     )
 
@@ -164,6 +164,10 @@ if __name__ == '__main__':
     model_group.add_argument(
         '--embed_dim', type=int, default=768, help='Embedding dimension.'
     )
+    model_group.add_argument(
+        '--dropout', type=float, default=0.1, help='Dropout rate.'
+    )
+
     model_group.add_argument(
         '--dropout', type=float, default=0.1, help='Dropout rate.'
     )
