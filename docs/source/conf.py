@@ -27,7 +27,10 @@ html_theme = 'alabaster'
 html_static_path = ['_static']
 
 # Add any Sphinx extension module names here, as strings
-extensions = ['sphinx.ext.napoleon']
+extensions = [
+    'sphinx.ext.napoleon',
+    'sphinx.ext.mathjax',  # For rendering LaTeX equations
+]
 
 # Napoleon settings
 napoleon_google_docstring = True
