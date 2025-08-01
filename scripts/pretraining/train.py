@@ -168,10 +168,6 @@ if __name__ == '__main__':
         '--dropout', type=float, default=0.1, help='Dropout rate.'
     )
 
-    model_group.add_argument(
-        '--dropout', type=float, default=0.1, help='Dropout rate.'
-    )
-
     # --- Training Parameter Arguments ---
     training_group.add_argument(
         '--train_ratio',

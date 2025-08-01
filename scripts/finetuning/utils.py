@@ -6,11 +6,15 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import requests
 import tensorflow as tf
 import torch
+import torch.nn as nn
+from torch.optim import Optimizer
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from lmt.models.gpt import GPT
@@ -343,3 +347,276 @@ def random_split(
         pd.DataFrame(validation_df),
         pd.DataFrame(test_df),
     )
+
+
+def calc_accuracy_loader(
+    data_loader: DataLoader,
+    model: torch.nn.Module,
+    device: torch.device,
+    num_batches: int | None = None,
+) -> float:
+    """Calculates the accuracy of a model on a given data loader.
+
+    Args:
+        data_loader: The data loader containing the dataset.
+        model: The model to evaluate.
+        device: The device (e.g., 'cpu' or 'cuda') to run the evaluation on.
+        num_batches: The number of batches to use for the calculation. If None,
+            all batches in the data loader are used.
+
+    Returns:
+        The accuracy of the model as a float between 0 and 1.
+    """
+    model.eval()
+    correct_predictions, num_examples = 0, 0
+
+    if num_batches is None:
+        num_batches = len(data_loader)
+    else:
+        num_batches = min(num_batches, len(data_loader))
+    for i, (input_batch, target_batch) in enumerate(data_loader):
+        if i < num_batches:
+            input_batch = input_batch.to(device)
+            target_batch = target_batch.to(device)
+
+            with torch.no_grad():
+                logits = model(input_batch)[:, -1, :]
+            predicted_labels = torch.argmax(logits, dim=-1)
+
+            num_examples += predicted_labels.shape[0]
+            correct_predictions += (
+                (predicted_labels == target_batch).sum().item()
+            )
+        else:
+            break
+    return correct_predictions / num_examples
+
+
+def calc_loss_loader(
+    data_loader: DataLoader,
+    model: torch.nn.Module,
+    device: torch.device,
+    num_batches: int | None = None,
+) -> float:
+    """Calculates the average loss of a model on a given data loader.
+
+    Args:
+        data_loader: The data loader containing the dataset.
+        model: The model to evaluate.
+        device: The device (e.g., 'cpu' or 'cuda') to run the evaluation on.
+        num_batches: The number of batches to use for the calculation. If None,
+            all batches in the data loader are used.
+
+    Returns:
+        The average loss of the model as a float. Returns `nan` if the
+        data loader is empty.
+    """
+    total_loss = 0.0
+    if len(data_loader) == 0:
+        return float('nan')
+    elif num_batches is None:
+        num_batches = len(data_loader)
+    else:
+        num_batches = min(num_batches, len(data_loader))
+    for i, (input_batch, target_batch) in enumerate(data_loader):
+        if i < num_batches:
+            loss = calc_loss_batch(input_batch, target_batch, model, device)
+            total_loss += loss.item()
+        else:
+            break
+    return total_loss / num_batches
+
+
+def evaluate_model(
+    model: torch.nn.Module,
+    train_loader: DataLoader,
+    val_loader: DataLoader,
+    device: torch.device,
+    eval_iter: int,
+) -> tuple[float, float]:
+    """Evaluates the model on a subset of the training and validation data.
+
+    Args:
+        model: The model to be evaluated.
+        train_loader: The data loader for the training set.
+        val_loader: The data loader for the validation set.
+        device: The device (e.g., 'cpu' or 'cuda') to run the evaluation on.
+        eval_iter: The number of batches to use for evaluation from each data
+            loader.
+
+    Returns:
+        A tuple containing the average training loss and the average validation
+        loss, respectively.
+    """
+    model.eval()
+    with torch.no_grad():
+        train_loss = calc_loss_loader(
+            train_loader, model, device, num_batches=eval_iter
+        )
+
+        val_loss = calc_loss_loader(
+            val_loader, model, device, num_batches=eval_iter
+        )
+    model.train()
+    return train_loss, val_loss
+
+
+def calc_loss_batch(
+    input_batch: torch.Tensor,
+    target_batch: torch.Tensor,
+    model: nn.Module,
+    device: torch.device,
+) -> torch.Tensor:
+    """Calculates the cross-entropy loss for a single batch.
+
+    Args:
+        input_batch (torch.Tensor): The input batch of data.
+        target_batch (torch.Tensor): The target batch of data.
+        model (torch.nn.Module): The neural network model.
+        device (str): The device (e.g., 'cpu' or 'cuda') to run the tensors on.
+
+    Returns:
+        torch.Tensor: The calculated cross-entropy loss for the batch.
+    """
+    input_batch, target_batch = input_batch.to(device), target_batch.to(device)
+    logits = model(input_batch)[:, -1, :]  # Logits of last output token
+    loss = torch.nn.functional.cross_entropy(logits, target_batch)
+    return loss
+
+
+def plot_metrics(
+    train_losses: list,
+    val_losses: list,
+    train_accs: list,
+    val_accs: list,
+    eval_freq: int,
+    save_dir: str,
+):
+    """Plots the training and validation loss and accuracy over time.
+
+    Args:
+        train_losses (list): A list of training loss values.
+        val_losses (list): A list of validation loss values.
+        train_accs (list): A list of training accuracy values.
+        val_accs (list): A list of validation accuracy values.
+        eval_freq (int): The frequency (in steps) at which loss was evaluated.
+        save_dir (str): Directory to save plot to.
+    """
+    # Create a figure with two subplots side-by-side
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+
+    # --- Plot the Loss ---
+    loss_steps = np.arange(0, len(train_losses) * eval_freq, eval_freq)
+
+    ax1.plot(loss_steps, train_losses, label='Training Loss', marker='o')
+    ax1.plot(loss_steps, val_losses, label='Validation Loss', marker='o')
+
+    ax1.set_title('Loss over Training Steps')
+    ax1.set_xlabel('Global Step')
+    ax1.set_ylabel('Loss')
+    ax1.legend()
+    ax1.grid(True)
+
+    # --- Plot the Accuracy ---
+    # The x-axis for accuracy corresponds to the number of epochs.
+    accuracy_epochs = np.arange(1, len(train_accs) + 1)
+
+    ax2.plot(
+        accuracy_epochs,
+        np.array(train_accs) * 100,
+        label='Training Accuracy',
+        marker='o',
+    )
+    ax2.plot(
+        accuracy_epochs,
+        np.array(val_accs) * 100,
+        label='Validation Accuracy',
+        marker='o',
+    )
+
+    ax2.set_title('Accuracy per Epoch')
+    ax2.set_xlabel('Epoch')
+    ax2.set_ylabel('Accuracy (%)')
+    ax2.legend()
+    ax2.grid(True)
+
+    # Adjust layout to prevent titles from overlapping
+    plt.tight_layout()
+
+    plt.savefig(f'{save_dir}/training_metrics.png')
+    print(f'Plot saved to {save_dir}/training_metrics.png')
+
+
+def train(
+    model: nn.Module,
+    train_dataloader: DataLoader,
+    val_dataloader: DataLoader,
+    optimizer: Optimizer,
+    device: torch.device,
+    num_epochs: int,
+    eval_freq: int,
+    eval_iter: int,
+):
+    """Trains a GPT-style model for classification.
+
+    This function handles the complete training loop, including periodic
+    evaluation on a validation set and generating sample text to monitor
+    the model's progress.
+
+    Args:
+        model (torch.nn.Module): The GPT model to be trained.
+        train_dataloader (torch.utils.data.DataLoader): DataLoader for the
+            training set.
+        val_dataloader (torch.utils.data.DataLoader): DataLoader for the
+            validation set.
+        optimizer (torch.optim.Optimizer): The optimizer for training.
+        device (torch.device): The device to run the model on (e.g., 'cuda'
+            or 'cpu').
+        num_epochs (int): Total number of epochs to train for.
+        eval_freq (int): Frequency (in epochs) to perform evaluation.
+        eval_iter (int): Number of batches from val_dataloader to use for
+            evaluation.
+        start_context (str): A starting string to prompt the model for
+            text generation.
+        tokenizer: (BaseTokenizer) The tokenizer used for encoding and
+            decoding text.
+    """
+    train_losses, val_losses, train_accs, val_accs = [], [], [], []
+    examples_seen, global_step = 0, -1
+
+    for epoch in range(num_epochs):
+        model.train()
+
+        for input_batch, target_batch in train_dataloader:
+            optimizer.zero_grad()
+            loss = calc_loss_batch(input_batch, target_batch, model, device)
+            loss.backward()
+            optimizer.step()
+            examples_seen += input_batch.shape[0]
+            global_step += 1
+
+            if global_step % eval_freq == 0:
+                train_loss, val_loss = evaluate_model(
+                    model, train_dataloader, val_dataloader, device, eval_iter
+                )
+
+                train_losses.append(train_loss)
+                val_losses.append(val_loss)
+                print(
+                    f'Ep {epoch + 1} (Step {global_step:06d}): '
+                    f'Train loss {train_loss:.3f}, Val loss {val_loss:.3f}'
+                )
+
+        # Calculate accuracy after each epoch
+        train_accuracy = calc_accuracy_loader(
+            train_dataloader, model, device, num_batches=eval_iter
+        )
+        val_accuracy = calc_accuracy_loader(
+            val_dataloader, model, device, num_batches=eval_iter
+        )
+        print(f'Training accuracy: {train_accuracy * 100:.2f}% | ', end='')
+        print(f'Validation accuracy: {val_accuracy * 100:.2f}%')
+        train_accs.append(train_accuracy)
+        val_accs.append(val_accuracy)
+
+    return train_losses, val_losses, train_accs, val_accs, examples_seen
