@@ -21,8 +21,5 @@ repos:
     rev: 2.1.1
     hooks:
       - id: poetry-check
-        verbose: true
       - id: poetry-lock
-        verbose: true
       - id: poetry-install
-        verbose: true
