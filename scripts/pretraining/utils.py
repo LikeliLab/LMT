@@ -289,7 +289,7 @@ def plot_losses(save_dir, train_losses, val_losses, tokens_seen):
         print('No data to plot. Skipping loss plot generation.')
         return
 
-    # Create a new figure and axes for the plot 📈
+    # Create a new figure and axes for the plot
     fig, ax = plt.subplots(figsize=(10, 6))
 
     # Plot training and validation losses
