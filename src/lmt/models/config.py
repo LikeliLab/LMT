@@ -47,3 +47,117 @@ class ModelConfig:
     dropout: float = 0.1
     qkv_bias: bool = False
     ff_network: Module | None = None
+
+
+class ModelConfigPresets:
+    """Predefined model configurations for common use cases.
+
+    This class provides a set of static methods to create pre-configured
+    `ModelConfig` objects for popular model architectures and sizes,
+    as well as a utility method to build a configuration from command-line
+    arguments.
+    """
+
+    @staticmethod
+    def gpt2_124m(
+        context_length: int = 1024, dropout: float = 0.1
+    ) -> ModelConfig:
+        """Creates a configuration for the GPT-2 124M model.
+
+        Args:
+            context_length (int): The maximum sequence length for the model.
+                Defaults to 1024.
+            dropout (float): The dropout rate to apply. Defaults to 0.1.
+
+        Returns:
+            ModelConfig: A configured `ModelConfig` object for the GPT-2 124M
+                model.
+        """
+        return ModelConfig(
+            context_length=context_length,
+            vocab_size=50257,
+            num_layers=12,
+            num_heads=12,
+            embed_dim=768,
+            dropout=dropout,
+            qkv_bias=True,
+            ff_network=None,
+        )
+
+    @staticmethod
+    def gpt2_355m(
+        context_length: int = 1024, dropout: float = 0.1
+    ) -> ModelConfig:
+        """Creates a configuration for the GPT-2 355M model.
+
+        Args:
+            context_length (int): The maximum sequence length for the model.
+                Defaults to 1024.
+            dropout (float): The dropout rate to apply. Defaults to 0.1.
+
+        Returns:
+            ModelConfig: A configured `ModelConfig` object for the GPT-2 355M
+            model.
+        """
+        return ModelConfig(
+            context_length=context_length,
+            vocab_size=50257,
+            num_layers=24,
+            num_heads=16,
+            embed_dim=1024,
+            dropout=dropout,
+            qkv_bias=True,
+            ff_network=None,
+        )
+
+    @staticmethod
+    def small_gpt(
+        context_length: int = 256, dropout: float = 0.1
+    ) -> ModelConfig:
+        """Creates a small GPT model configuration for quick experimentation.
+
+        Args:
+            context_length (int): The maximum sequence length for the model.
+                Defaults to 256.
+            dropout (float): The dropout rate to apply. Defaults to 0.1.
+
+        Returns:
+            ModelConfig: A configured `ModelConfig` object for a small GPT
+            model.
+        """
+        return ModelConfig(
+            context_length=context_length,
+            vocab_size=50257,
+            num_layers=6,
+            num_heads=6,
+            embed_dim=384,
+            dropout=dropout,
+            qkv_bias=False,
+            ff_network=None,
+        )
+
+    @staticmethod
+    def from_args(args) -> ModelConfig:
+        """Creates a model config from command line arguments.
+
+        This method expects the `args` object to have attributes corresponding
+        to the `ModelConfig` parameters.
+
+        Args:
+            args (object): An object, such as an `argparse.Namespace`,
+                containing the necessary configuration attributes.
+
+        Returns:
+            ModelConfig: A configured `ModelConfig` object built from the
+            provided arguments.
+        """
+        return ModelConfig(
+            context_length=args.context_length,
+            vocab_size=args.vocab_size,
+            num_layers=args.num_layers,
+            num_heads=args.num_heads,
+            embed_dim=args.embed_dim,
+            dropout=args.dropout,
+            qkv_bias=getattr(args, 'qkv_bias', False),
+            ff_network=None,
+        )

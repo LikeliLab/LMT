@@ -12,3 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Classes for LM training."""
+
+from .base import BaseTrainer
+from .pretrainer import PreTrainer
+
+__all__ = ['BaseTrainer', 'PreTrainer']

@@ -164,16 +164,45 @@ class BaseTrainer(ABC):
     def train_step(
         self, input_batch: torch.Tensor, target_batch: torch.Tensor
     ) -> torch.Tensor:
-        """Single training step - must be implemented by subclasses."""
+        """Performs a single training step.
+
+        This method should be implemented by a subclass. It typically
+        involves a forward pass, loss calculation, and an optional
+        backward pass.
+
+        Args:
+            input_batch: The input tensor for the model.
+            target_batch: The target tensor for loss calculation.
+
+        Returns:
+            The calculated loss for the training step.
+        """
         pass
 
     @abstractmethod
     def evaluate_step(self) -> tuple[float, float]:
-        """Single evaluation step - must be implemented by subclasses."""
+        """Performs a single evaluation step.
+
+        This method should be implemented by a subclass to evaluate
+        the model's performance on both training and validation data.
+
+        Returns:
+            A tuple containing the training loss and validation loss
+            for the evaluation step.
+        """
         pass
 
     def train(self) -> dict[str, Any]:
-        """Main training loop."""
+        """Runs the main training loop for the model.
+
+        This method iterates through the specified number of epochs,
+        performing training steps and periodic evaluations. It tracks
+        training and validation losses and prints progress.
+
+        Returns:
+            A dictionary containing the final training losses,
+            validation losses, and the total execution time in minutes.
+        """
         print('Starting model training...')
         start_time = time.time()
 

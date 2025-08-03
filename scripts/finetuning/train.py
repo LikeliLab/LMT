@@ -12,10 +12,10 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from lmt.datasets import ClassificationDataset
 from lmt.models.config import ModelConfig
 from lmt.models.gpt import GPT
 from lmt.tokenizer.bpe import BPETokenizer
+from lmt.training.datasets import ClassificationDataset
 
 # Import your custom modules
 from scripts.finetuning.utils import (
