@@ -49,6 +49,7 @@ class BaseTrainingConfig:
         batch_size: int = 2,
         device: str = 'mps',
         save_dir: str = 'runs',
+        task: str = 'pretraining',
         **kwargs,
     ):
         """Initializes the BaseTrainingConfig with training parameters.
@@ -66,6 +67,7 @@ class BaseTrainingConfig:
                 Defaults to 'mps'.
             save_dir (str, optional): The directory where training artifacts
                 will be saved. Defaults to 'runs'.
+            task (str): Training task (e.g. pretraining or classification)
             **kwargs: Additional keyword arguments to be stored as attributes.
         """
         self.num_epochs = num_epochs
@@ -76,6 +78,7 @@ class BaseTrainingConfig:
         self.batch_size = batch_size
         self.device = device
         self.save_dir = save_dir
+        self.task = task
 
         # Store any additional config parameters
         for key, value in kwargs.items():

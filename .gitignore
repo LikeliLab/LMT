@@ -14,5 +14,5 @@ wheels/
 .venv
 
 # Models
-scripts/*/models/*
+scripts/models/*
 *.pth

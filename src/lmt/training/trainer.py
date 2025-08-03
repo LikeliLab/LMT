@@ -18,7 +18,6 @@ and evaluation loops of a machine learning model.
 """
 
 import time
-from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
@@ -29,10 +28,11 @@ from torch.utils.data import DataLoader
 
 from lmt.tokenizer.base import BaseTokenizer
 from lmt.training.config import BaseTrainingConfig
+from lmt.training.loss import calc_loss_batch, evaluate_model
 
 
-class BaseTrainer(ABC):
-    """Base trainer class with common functionality.
+class Trainer:
+    """Trainer class for pretraining and finetuning.
 
     This class provides a foundation for training a PyTorch model. It
     handles model and data loader initialization, device placement,
@@ -94,7 +94,111 @@ class BaseTrainer(ABC):
         # Training tracking
         self.train_losses = []
         self.val_losses = []
+
+        self.examples_seen = 0
+        self.track_examples_seen = []
+
         self.global_step = -1
+        self.track_global_steps = []
+
+    def train_step(
+        self, input_batch: torch.Tensor, target_batch: torch.Tensor
+    ) -> torch.Tensor:
+        """Performs a single training step.
+
+        Calculates the loss for a batch, updates the `examples_seen` and
+        `global_step` counters.
+
+        Args:
+            input_batch: A `torch.Tensor` containing the input data for the
+                batch.
+            target_batch: A `torch.Tensor` containing the target data for the
+                batch.
+
+        Returns:
+            A `torch.Tensor` representing the calculated loss for the batch.
+        """
+        loss = calc_loss_batch(
+            input_batch,
+            target_batch,
+            self.model,
+            self.device,
+            self.config.task,
+        )
+        self.examples_seen += input_batch.numel()
+        self.global_step += 1
+        return loss
+
+    def evaluate_step(self) -> tuple[float, float]:
+        """Performs an evaluation step for pretraining.
+
+        Evaluates the model on both the training and validation datasets,
+        then records the current number of tokens seen and global steps.
+
+        Returns:
+            A tuple containing:
+                - The average training loss (`float`).
+                - The average validation loss (`float`).
+        """
+        train_loss, val_loss = evaluate_model(
+            self.model,
+            self.train_loader,
+            self.val_loader,
+            self.device,
+            self.config.eval_iter,
+            self.config.task,
+        )
+        self.track_examples_seen.append(self.examples_seen)
+        self.track_global_steps.append(self.global_step)
+        return train_loss, val_loss
+
+    def train(self) -> dict[str, Any]:
+        """Runs the main training loop for the model.
+
+        This method iterates through the specified number of epochs,
+        performing training steps and periodic evaluations. It tracks
+        training and validation losses and prints progress.
+
+        Returns:
+            A dictionary containing the final training losses,
+            validation losses, and the total execution time in minutes.
+        """
+        print('Starting model training...')
+        start_time = time.time()
+
+        for epoch in range(self.config.num_epochs):
+            self.model.train()
+
+            for input_batch, target_batch in self.train_loader:
+                self.optimizer.zero_grad()
+                loss = self.train_step(input_batch, target_batch)
+                loss.backward()
+                self.optimizer.step()
+                self.global_step += 1
+
+                # Periodic evaluation
+                if self.global_step % self.config.eval_freq == 0:
+                    train_loss, val_loss = self.evaluate_step()
+                    self.train_losses.append(train_loss)
+                    self.val_losses.append(val_loss)
+
+                    print(
+                        f'Ep {epoch + 1} (Step {self.global_step:06d}): '
+                        f'Train loss: {train_loss:.3f}, '
+                        f'Val loss: {val_loss:.3f}'
+                    )
+
+        end_time = time.time()
+        execution_time = (end_time - start_time) / 60
+        print(f'Training completed in {execution_time:.2f} minutes.')
+
+        return {
+            'train_losses': self.train_losses,
+            'val_losses': self.val_losses,
+            'execution_time': execution_time,
+            'track_examples_seen': self.track_examples_seen,
+            'track_global_steps': self.track_global_steps,
+        }
 
     def save_model(
         self,
@@ -146,7 +250,7 @@ class BaseTrainer(ABC):
 
         # Set plot title and labels
         ax.set_title('Training & Validation Loss Over Time')
-        ax.set_xlabel('Tokens Seen')
+        ax.set_xlabel('Examples Seen')
         ax.set_ylabel('Loss')
 
         # Add a legend and grid
@@ -159,81 +263,3 @@ class BaseTrainer(ABC):
         print(f'Saving loss plot to {save_path}')
         plt.savefig(save_path)
         plt.close(fig)  # Close the figure to free up memory
-
-    @abstractmethod
-    def train_step(
-        self, input_batch: torch.Tensor, target_batch: torch.Tensor
-    ) -> torch.Tensor:
-        """Performs a single training step.
-
-        This method should be implemented by a subclass. It typically
-        involves a forward pass, loss calculation, and an optional
-        backward pass.
-
-        Args:
-            input_batch: The input tensor for the model.
-            target_batch: The target tensor for loss calculation.
-
-        Returns:
-            The calculated loss for the training step.
-        """
-        pass
-
-    @abstractmethod
-    def evaluate_step(self) -> tuple[float, float]:
-        """Performs a single evaluation step.
-
-        This method should be implemented by a subclass to evaluate
-        the model's performance on both training and validation data.
-
-        Returns:
-            A tuple containing the training loss and validation loss
-            for the evaluation step.
-        """
-        pass
-
-    def train(self) -> dict[str, Any]:
-        """Runs the main training loop for the model.
-
-        This method iterates through the specified number of epochs,
-        performing training steps and periodic evaluations. It tracks
-        training and validation losses and prints progress.
-
-        Returns:
-            A dictionary containing the final training losses,
-            validation losses, and the total execution time in minutes.
-        """
-        print('Starting model training...')
-        start_time = time.time()
-
-        for epoch in range(self.config.num_epochs):
-            self.model.train()
-
-            for input_batch, target_batch in self.train_loader:
-                self.optimizer.zero_grad()
-                loss = self.train_step(input_batch, target_batch)
-                loss.backward()
-                self.optimizer.step()
-                self.global_step += 1
-
-                # Periodic evaluation
-                if self.global_step % self.config.eval_freq == 0:
-                    train_loss, val_loss = self.evaluate_step()
-                    self.train_losses.append(train_loss)
-                    self.val_losses.append(val_loss)
-
-                    print(
-                        f'Ep {epoch + 1} (Step {self.global_step:06d}): '
-                        f'Train loss: {train_loss:.3f}, '
-                        f'Val loss: {val_loss:.3f}'
-                    )
-
-        end_time = time.time()
-        execution_time = (end_time - start_time) / 60
-        print(f'Training completed in {execution_time:.2f} minutes.')
-
-        return {
-            'train_losses': self.train_losses,
-            'val_losses': self.val_losses,
-            'execution_time': execution_time,
-        }

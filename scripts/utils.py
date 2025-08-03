@@ -533,7 +533,9 @@ def random_split(
     )
 
 
-def download_model(model_size: str = '124M', models_dir: str = 'models'):
+def download_model(
+    model_size: str = '124M', models_dir: str = 'scripts/models'
+):
     """Downloads GPT-2 model files from OpenAI's blob storage.
 
     This function fetches the specified GPT-2 model files from OpenAI's public
@@ -587,8 +589,8 @@ def download_model(model_size: str = '124M', models_dir: str = 'models'):
         'vocab.bpe',
     ]:
         r = requests.get(
-            'https://openaipublic.blob.core.windows.net/gpt-2/'
-            + subdir
+            'https://openaipublic.blob.core.windows.net/gpt-2/models/'
+            + model_size
             + '/'
             + filename,
             stream=True,
@@ -856,6 +858,7 @@ def prepare_classification_model(
     # load tf model
     tf_ckpt_path = tf.train.latest_checkpoint(pretrained_model_dir)
 
+    print(f'Path = {os.path.join(pretrained_model_dir, "hparams.json")}')
     with open(
         os.path.join(pretrained_model_dir, 'hparams.json'), encoding='utf-8'
     ) as f:

@@ -34,7 +34,7 @@ import torch
 from lmt.models.config import ModelConfig
 from lmt.models.gpt import GPT
 from lmt.training.config import BaseTrainingConfig
-from lmt.training.trainer import PreTrainer
+from lmt.training.trainer import Trainer
 from scripts.utils import (
     download_model,
     prepare_classification_model,
@@ -98,6 +98,7 @@ def main(args):
         batch_size=args.batch_size,
         device=args.device,
         save_dir=args.save_dir,
+        task=args.task,
         start_context=args.start_context,  # Additional config for pretraining
         train_ratio=args.train_ratio,
         val_ratio=args.val_ratio,
@@ -126,7 +127,7 @@ def main(args):
             download_model(model_size='124M')
 
         print('\n--- Load Model Pretrained Weights ---')
-        pretrained_model_dir = 'scripts/finetuning/models/124M/'
+        pretrained_model_dir = 'scripts/models/124M/'
         prepare_classification_model(
             model, model_config, pretrained_model_dir, device
         )
@@ -135,14 +136,14 @@ def main(args):
     dataloaders = prepare_data(args)
 
     # Initialize trainer and train
-    trainer = PreTrainer(
+    trainer = Trainer(
         model,
         dataloaders['train_dataloader'],  # type: ignore
         dataloaders['val_dataloader'],  # type: ignore
         training_config,
     )
     results = trainer.train()
-    trainer.plot_losses(x_axis_data=results['tokens_seen'])
+    trainer.plot_losses(x_axis_data=results['track_examples_seen'])
     trainer.save_model()
 
     return results
