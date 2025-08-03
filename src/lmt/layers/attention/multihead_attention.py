@@ -14,6 +14,8 @@
 
 """Implementation of Multi-Head Attention Layer."""
 
+import math
+
 import torch
 import torch.nn as nn
 
@@ -24,7 +26,7 @@ class MultiHeadAttention(nn.Module):
     """Multi-Head Attention Layer."""
 
     # Correctly type self.mask as a Tensor
-    mask: torch.Tensor
+    causal_mask: torch.Tensor
 
     def __init__(self, model_config: ModelConfig):
         """Initialize the Multi-Head Attention layer.
@@ -33,9 +35,8 @@ class MultiHeadAttention(nn.Module):
         CausalAttention classes, MultiHeadAttention calculates attention
         weights using `num_heads` self-attention mechanisms each
         with causal masks in parallel. The output of the `num_heads`
-        self-attention
-        machanisms are concatenated together and applied to the queries
-        to produce the context vectors.
+        self-attention heads are concatenated together and applied to the
+        queries to produce the context vectors.
 
 
         Args:
@@ -51,19 +52,11 @@ class MultiHeadAttention(nn.Module):
         self.num_heads = model_config.num_heads
         self.head_dim = model_config.embed_dim // model_config.num_heads
 
-        self.W_query = nn.Linear(
+        # Using fused qkv
+        # This reduces memory overhead
+        self.qkv_proj = nn.Linear(
             model_config.embed_dim,
-            model_config.embed_dim,
-            bias=model_config.qkv_bias,
-        )
-        self.W_key = nn.Linear(
-            model_config.embed_dim,
-            model_config.embed_dim,
-            bias=model_config.qkv_bias,
-        )
-        self.W_value = nn.Linear(
-            model_config.embed_dim,
-            model_config.embed_dim,
+            3 * model_config.embed_dim,
             bias=model_config.qkv_bias,
         )
 
@@ -72,14 +65,15 @@ class MultiHeadAttention(nn.Module):
         )
 
         self.register_buffer(
-            'mask',
-            torch.triu(
-                torch.ones(
-                    model_config.context_length, model_config.context_length
-                ),
-                diagonal=1,
-            ),
+            'causal_mask',
+            torch.full(
+                (model_config.context_length, model_config.context_length),
+                float('-inf'),
+            ).triu(diagonal=1),
         )
+
+        # Pre-compute scaling factor for efficiency
+        self.scale = 1.0 / math.sqrt(self.head_dim)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the Multi-Head Attention layer.
@@ -99,9 +93,10 @@ class MultiHeadAttention(nn.Module):
         """
         b, seq_length, _ = x.shape
 
-        keys = self.W_key(x)
-        queries = self.W_query(x)
-        values = self.W_value(x)
+        # With fused qkv we can compute the query, keys and values in a
+        # single matrix multiplication instead of three separate ones
+        qkv = self.qkv_proj(x)  # [batch, seq_len, 3 * embed_dim]
+        queries, keys, values = qkv.chunk(3, dim=-1)
 
         keys = keys.view(b, seq_length, self.num_heads, self.head_dim)
         queries = queries.view(b, seq_length, self.num_heads, self.head_dim)
@@ -111,13 +106,14 @@ class MultiHeadAttention(nn.Module):
         queries = queries.transpose(1, 2)
         values = values.transpose(1, 2)
 
-        attn_scores = queries @ keys.transpose(2, 3)
-        mask_bool = self.mask.bool()[:seq_length, :seq_length]
-        attn_scores.masked_fill_(mask_bool, -torch.inf)
+        attn_scores = queries @ keys.transpose(-2, -1)
+        attn_scores = attn_scores * self.scale
 
-        attn_weights = torch.softmax(
-            attn_scores / keys.shape[-1] ** 0.5, dim=-1
-        )
+        # Prevent attention to future tokens in autoregressive modeling
+        causal_mask = self.causal_mask[:seq_length, :seq_length]
+        attn_scores = attn_scores + causal_mask
+
+        attn_weights = nn.functional.softmax(attn_scores, dim=-1)
 
         context_vec = (attn_weights @ values).transpose(1, 2)
         context_vec = context_vec.contiguous().view(
