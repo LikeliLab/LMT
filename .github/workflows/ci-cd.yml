@@ -57,7 +57,7 @@ jobs:
           echo "::error::Linting, formatting, or testing failed. Check logs for details."
 
   tag-release:
-    needs: lint-format-test
+    needs: [lint-format-test, get-python-version]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     permissions:
@@ -72,6 +72,12 @@ jobs:
         run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
+
+      - name: Setup Python with Poetry
+        uses: ./.github/actions/setup-python-poetry
+        with:
+          python-version: ${{ needs.get-python-version.outputs.version }}
+          install-dependencies: 'false'
 
       - name: Get Version
         id: get_version
@@ -93,10 +99,10 @@ jobs:
           git tag -a "v${VERSION}" -m "Release version v${VERSION}"
           git push origin "v${VERSION}"
 
-  publish:
-    needs: [lint-format-test, get-python-version, tag-release]
+  publish-dev:
+    needs: [lint-format-test, get-python-version]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/dev'
     permissions:
       contents: write
     steps:
@@ -114,20 +120,42 @@ jobs:
         run: poetry build
 
       - name: Publish to Test PyPI
-        if: github.ref == 'refs/heads/dev'
         uses: pypa/gh-action-pypi-publish@v1.13.0
         with:
           password: ${{ secrets.TEST_PYPI_API_TOKEN }}
           repository-url: https://test.pypi.org/legacy/
 
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Publish failed. Check logs for details."
+
+  publish-main:
+    needs: [lint-format-test, get-python-version, tag-release]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python with Poetry
+        uses: ./.github/actions/setup-python-poetry
+        with:
+          python-version: ${{ needs.get-python-version.outputs.version }}
+          install-dependencies: 'false'
+
+      - name: Build package
+        shell: bash
+        run: poetry build
+
       - name: Publish to PyPI
-        if: github.ref == 'refs/heads/main'
         uses: pypa/gh-action-pypi-publish@v1.13.0
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
 
       - name: Create GitHub Release
-        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           files: |
@@ -144,7 +172,7 @@ jobs:
           echo "::error::Publish failed. Check logs for details."
 
   smoke-test:
-    needs: [publish, tag-release, get-python-version]
+    needs: [publish-main, tag-release, get-python-version]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
@@ -162,13 +190,7 @@ jobs:
           echo "Waiting 60 seconds for package to be available on PyPI..."
           sleep 60
 
-      - name: Test dev package installation
-        if: github.ref == 'refs/heads/dev'
-        run: |
-          pip install --index-url https://test.pypi.org/simple/ lmt==${{ needs.tag-release.outputs.version }}
-
       - name: Test prod package installation
-        if: github.ref == 'refs/heads/main'
         run: |
           pip install --index-url https://pypi.org/simple/ lmt==${{ needs.tag-release.outputs.version }}
 
@@ -180,4 +202,3 @@ jobs:
         if: failure()
         run: |
           echo "::error::Smoke tests failed. Published package may have issues."
-
