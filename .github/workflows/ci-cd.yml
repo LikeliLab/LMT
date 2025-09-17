@@ -175,10 +175,15 @@ jobs:
           echo "Waiting 60 seconds for package to be available on PyPI..."
           sleep 60
 
-      - name: Test package installation
+      - name: Test dev package installation
+        if: github.ref == 'refs/heads/dev'
         run: |
-          pip install --index-url https://pypi.org/simple/ lmt==${{ needs.tag-release.outputs.version }} || \
           pip install --index-url https://test.pypi.org/simple/ lmt==${{ needs.tag-release.outputs.version }}
+
+      - name: Test prod package installation
+        if: github.ref == 'refs/heads/main'
+        run: |
+          pip install --index-url https://pypi.org/simple/ lmt==${{ needs.tag-release.outputs.version }}
 
       - name: Basic import test
         run: |
