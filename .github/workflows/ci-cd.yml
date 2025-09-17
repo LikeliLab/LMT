@@ -1,4 +1,4 @@
-name: Lint, Format, Test, Tag
+name: CICD Pipeline
 
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
 
       - name: Get Python version
         id: python-version
-        uses: ./.github/actions/get-python-versions
+        uses: ./.github/actions/get-python-version
 
   lint-format-test:
     needs: get-python-version
@@ -124,15 +124,29 @@ jobs:
         shell: bash
         run: poetry build
 
-      - name: Publish to PyPI and GitHub
-        uses: ./.github/actions/publish-package
+      - name: Publish to Test PyPI
+        if: github.ref == 'refs/heads/dev'
+        uses: pypa/gh-action-pypi-publish@v1.13.0
         with:
-          python-version: ${{ needs.get-python-version.outputs.version }}
-          environment: ${{ github.ref == 'refs/heads/main' && 'prod' || 'test' }}
-          pypi-token: ${{ github.ref == 'refs/heads/main' && secrets.PYPI_API_TOKEN || secrets.TEST_PYPI_API_TOKEN }}
-          release-type: ${{ github.ref == 'refs/heads/main' && 'release' || 'prerelease' }}
-          release-name: Release v${{ needs.tag-release.outputs.version }}
-          release-body: "Automated release for v${{ needs.tag-release.outputs.version }}"
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          repository-url: https://test.pypi.org/legacy/
+
+      - name: Publish to PyPI
+        if: github.ref == 'refs/heads/main'
+        uses: pypa/gh-action-pypi-publish@v1.13.0
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*
+          name: Release v${{ needs.tag-release.outputs.version }}
+          body: "Automated release for v${{ needs.tag-release.outputs.version }}"
+          draft: false
+          prerelease: ${{ github.ref == 'refs/heads/dev' }}
+          tag_name: v${{ needs.tag-release.outputs.version }}
 
       - name: Notify on failure
         if: failure()
