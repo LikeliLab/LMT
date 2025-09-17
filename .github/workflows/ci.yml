@@ -40,7 +40,7 @@ jobs:
 
       - name: Setup Python with Poetry
         uses: ./.github/actions/setup-python-poetry
-       with:
+        with:
           python-version: ${{ needs.get-python-version.outputs.version }}
 
       - name: Run tests

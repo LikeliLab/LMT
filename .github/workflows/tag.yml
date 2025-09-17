@@ -10,6 +10,7 @@ on:
 jobs:
   tag-release:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     outputs:
       version: ${{ steps.get_version.outputs.version }}
     steps:
