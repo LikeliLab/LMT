@@ -1,6 +1,6 @@
 [project]
 name = "lmt"
-version = "0.2.1a1"
+version = "0.2.1a2"
 description = ""
 authors = [
     {name = "Michael Ellis",email = "michaelellis003@gmail.com"}
