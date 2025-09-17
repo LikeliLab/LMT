@@ -1,8 +1,8 @@
 name: Lint, Format, Test, Tag
-permissions:
- contents: write
+
 on:
   push:
+  workflow_dispatch:
 
 jobs:
   get-python-version:
@@ -25,6 +25,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
       - name: Setup Python with Poetry
         uses: ./.github/actions/setup-python-poetry
         with:
@@ -41,10 +51,17 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Linting, formatting, or testing failed. Check logs for details."
+
   tag-release:
     needs: lint-format-test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
     outputs:
       version: ${{ steps.get_version.outputs.version }}
     steps:
@@ -84,6 +101,11 @@ jobs:
           git tag -a "v${VERSION}" -m "Automated release version v${VERSION}"
           git push origin "v${VERSION}"
 
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Tagging failed. Check version conflicts or Git configuration."
+
   publish:
     needs: [tag-release]
     runs-on: ubuntu-latest
@@ -91,6 +113,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Setup Python with Poetry
+        uses: ./.github/actions/setup-python-poetry
+        with:
+          python-version: ${{ needs.get-python-version.outputs.version }}
+          install-dependencies: 'false'
 
       - name: Build package
         shell: bash
@@ -105,4 +133,42 @@ jobs:
           release-type: ${{ github.ref == 'refs/heads/main' && 'release' || 'prerelease' }}
           release-name: Release v${{ needs.tag-release.outputs.version }}
           release-body: "Automated release for v${{ needs.tag-release.outputs.version }}"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Pipeline failed during publish step. Check logs for details."
+
+  smoke-test:
+    needs: [publish, tag-release, get-python-version]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python with Poetry
+        uses: ./.github/actions/setup-python-poetry
+        with:
+          python-version: ${{ needs.get-python-version.outputs.version }}
+          install-dependencies: 'false'
+
+      - name: Wait for package availability
+        run: |
+          echo "Waiting 60 seconds for package to be available on PyPI..."
+          sleep 60
+
+      - name: Test package installation
+        run: |
+          pip install --index-url https://pypi.org/simple/ lmt==${{ needs.tag-release.outputs.version }} || \
+          pip install --index-url https://test.pypi.org/simple/ lmt==${{ needs.tag-release.outputs.version }}
+
+      - name: Basic import test
+        run: |
+          python -c "import lmt; print('Package import successful')"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Smoke tests failed. Published package may have issues."
 
