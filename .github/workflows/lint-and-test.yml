@@ -1,4 +1,4 @@
-name: CI
+name: Lint and Test
 on:
   push:
 
@@ -50,15 +50,4 @@ jobs:
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-
-  build:
-    runs-on: ubuntu-latest
-    needs: [get-python-version, pytest]
-    if: success()
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup Python with Poetry
-        uses: ./.github/actions/setup-python-poetry
 
