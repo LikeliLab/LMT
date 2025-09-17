@@ -1,0 +1,196 @@
+name: CICD Pipeline
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  get-python-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.python-version.outputs.version }}
+      matrix: ${{ steps.python-version.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Get Python version
+        id: python-version
+        uses: ./.github/actions/get-python-version
+
+  lint-format-test:
+    needs: get-python-version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      - name: Setup Python with Poetry
+        uses: ./.github/actions/setup-python-poetry
+        with:
+          python-version: ${{ needs.get-python-version.outputs.version }}
+
+      - name: Run linter and formatter
+        run: poetry run pre-commit run --all-files
+
+      - name: Unit Tests with pytest
+        run: poetry run pytest -v --durations=0 --cov --cov-report=xml
+
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Linting, formatting, or testing failed. Check logs for details."
+
+  tag-release:
+    needs: lint-format-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python with Poetry
+        uses: ./.github/actions/setup-python-poetry
+        with:
+          python-version: ${{ needs.get-python-version.outputs.version }}
+          install-dependencies: 'false'
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+      - name: Get Version
+        id: get_version
+        run: |
+          VERSION=$(poetry version | cut -d' ' -f2)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Check if tag already exists
+        id: check_tag
+        run: |
+          git fetch --tags
+          if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
+            echo "::error::Tag v${VERSION} already exists on GitHub. Please bump the version in pyproject.toml."
+            exit 1
+          fi
+
+      - name: Create and push new tag
+        if: success()
+        run: |
+          git tag -a "v${VERSION}" -m "Automated release version v${VERSION}"
+          git push origin "v${VERSION}"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Tagging failed. Check version conflicts or Git configuration."
+
+  publish:
+    needs: [tag-release]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python with Poetry
+        uses: ./.github/actions/setup-python-poetry
+        with:
+          python-version: ${{ needs.get-python-version.outputs.version }}
+          install-dependencies: 'false'
+
+      - name: Build package
+        shell: bash
+        run: poetry build
+
+      - name: Publish to Test PyPI
+        if: github.ref == 'refs/heads/dev'
+        uses: pypa/gh-action-pypi-publish@v1.13.0
+        with:
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          repository-url: https://test.pypi.org/legacy/
+
+      - name: Publish to PyPI
+        if: github.ref == 'refs/heads/main'
+        uses: pypa/gh-action-pypi-publish@v1.13.0
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Create GitHub Release
+        if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*
+          name: Release v${{ needs.tag-release.outputs.version }}
+          body: "Automated release for v${{ needs.tag-release.outputs.version }}"
+          draft: false
+          prerelease: ${{ github.ref == 'refs/heads/dev' }}
+          tag_name: v${{ needs.tag-release.outputs.version }}
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Pipeline failed during publish step. Check logs for details."
+
+  smoke-test:
+    needs: [publish, tag-release, get-python-version]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Python with Poetry
+        uses: ./.github/actions/setup-python-poetry
+        with:
+          python-version: ${{ needs.get-python-version.outputs.version }}
+          install-dependencies: 'false'
+
+      - name: Wait for package availability
+        run: |
+          echo "Waiting 60 seconds for package to be available on PyPI..."
+          sleep 60
+
+      - name: Test dev package installation
+        if: github.ref == 'refs/heads/dev'
+        run: |
+          pip install --index-url https://test.pypi.org/simple/ lmt==${{ needs.tag-release.outputs.version }}
+
+      - name: Test prod package installation
+        if: github.ref == 'refs/heads/main'
+        run: |
+          pip install --index-url https://pypi.org/simple/ lmt==${{ needs.tag-release.outputs.version }}
+
+      - name: Basic import test
+        run: |
+          python -c "import lmt; print('Package import successful')"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Smoke tests failed. Published package may have issues."
+
