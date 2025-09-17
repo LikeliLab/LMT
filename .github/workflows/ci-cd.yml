@@ -59,7 +59,7 @@ jobs:
   tag-release:
     needs: lint-format-test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
     permissions:
       contents: write
     outputs:
@@ -67,48 +67,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-
-      - name: Setup Python with Poetry
-        uses: ./.github/actions/setup-python-poetry
-        with:
-          python-version: ${{ needs.get-python-version.outputs.version }}
-          install-dependencies: 'false'
-
-      - name: Configure Git
-        run: |
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
-
-      - name: Check for existing version bump
-        id: check_bump
-        run: |
-          if git log -1 --pretty=%B | grep -q "Bump version"; then
-            echo "Version already bumped in latest commit, skipping version bump..."
-            echo "skip_bump=true" >> $GITHUB_OUTPUT
-          else
-            echo "No recent version bump found, proceeding..."
-            echo "skip_bump=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Bump version for dev release
-        if: github.ref == 'refs/heads/dev' && steps.check_bump.outputs.skip_bump == 'false'
-        run: |
-          poetry version prerelease
-          git commit -am "Bump version for dev release [skip ci]"
-          git push origin dev || {
-            echo "::error::Failed to push version bump commit"
-            exit 1
-          }
-
-      - name: Bump version for main release
-        if: github.ref == 'refs/heads/main' && steps.check_bump.outputs.skip_bump == 'false'
-        run: |
-          poetry version patch
-          git commit -am "Bump version for main release [skip ci]"
-          git push origin main || {
-            echo "::error::Failed to push version bump commit"
-            exit 1
-          }
 
       - name: Get Version
         id: get_version
@@ -118,7 +76,6 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Check if tag already exists
-        id: check_tag
         run: |
           git fetch --tags
           if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
@@ -127,18 +84,12 @@ jobs:
           fi
 
       - name: Create and push new tag
-        if: success()
         run: |
-          git tag -a "v${VERSION}" -m "Automated release version v${VERSION}"
+          git tag -a "v${VERSION}" -m "Release version v${VERSION}"
           git push origin "v${VERSION}"
 
-      - name: Notify on failure
-        if: failure()
-        run: |
-          echo "::error::Tagging failed. Check version conflicts or Git configuration."
-
   publish:
-    needs: [tag-release]
+    needs: [lint-format-test, get-python-version, tag-release]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
     permissions:
@@ -171,7 +122,7 @@ jobs:
           password: ${{ secrets.PYPI_API_TOKEN }}
 
       - name: Create GitHub Release
-        if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           files: |
@@ -179,18 +130,18 @@ jobs:
           name: Release v${{ needs.tag-release.outputs.version }}
           body: "Automated release for v${{ needs.tag-release.outputs.version }}"
           draft: false
-          prerelease: ${{ github.ref == 'refs/heads/dev' }}
+          prerelease: false
           tag_name: v${{ needs.tag-release.outputs.version }}
 
       - name: Notify on failure
         if: failure()
         run: |
-          echo "::error::Pipeline failed during publish step. Check logs for details."
+          echo "::error::Publish failed. Check logs for details."
 
   smoke-test:
     needs: [publish, tag-release, get-python-version]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
         uses: actions/checkout@v5
