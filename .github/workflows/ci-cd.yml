@@ -192,7 +192,7 @@ jobs:
 
       - name: Test prod package installation
         run: |
-          pip install --index-url https://pypi.org/simple/ lmt==${{ needs.tag-release.outputs.version }}
+          pip install --index-url https://pypi.org/simple/ language-modeling-transformers==${{ needs.tag-release.outputs.version }}
 
       - name: Basic import test
         run: |
