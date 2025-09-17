@@ -1,0 +1,53 @@
+name: Create and Push Tag
+permissions:
+  contents: write
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+jobs:
+  tag-release:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Get Python version
+        id: python-version
+        uses: ./.github/actions/get-python-versions
+
+      - name: Setup Python with Poetry
+        uses: ./.github/actions/setup-python-poetry
+        with:
+          python-version: ${{ steps.python-version.outputs.version }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+      - name: Get Version
+        id: get_version
+        run: |
+          VERSION=$(poetry version | cut -d' ' -f2)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Check if tag already exists
+        id: check_tag
+        run: |
+          git fetch --tags
+          if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
+            echo "::error::Tag v${VERSION} already exists on GitHub. Please bump the version in pyproject.toml."
+            exit 1
+          fi
+
+      - name: Create and push new tag
+        if: success()
+        run: |
+          git tag -a "v${VERSION}" -m "Automated release version v${VERSION}"
+          git push origin "v${VERSION}"
