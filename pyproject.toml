@@ -1,6 +1,6 @@
 [project]
-name = "lmt"
-version = "0.2.5"
+name = "language-modeling-transformers"
+version = "0.2.7"
 description = ""
 authors = [
     {name = "Michael Ellis",email = "michaelellis003@gmail.com"}
@@ -18,6 +18,13 @@ dependencies = [
     "pandas (>=2.3.1,<3.0.0)",
     "tensorflow (>=2.19.0,<3.0.0)"
 ]
+
+[tool.poetry]
+name = "language-modeling-transformers"
+version = "0.2.7"
+description = ""
+authors = ["Michael Ellis <michaelellis003@gmail.com>"]
+packages = [{include = "lmt", from = "src"}]
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
