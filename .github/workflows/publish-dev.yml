@@ -3,7 +3,7 @@ permissions:
   contents: write
 on:
   workflow_run:
-    workflows: [Create and Push Tag]
+    workflows: ["Create and Push Tag"]
     types: [completed]
     branches-ignore:
       - main

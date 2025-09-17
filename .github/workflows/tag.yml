@@ -4,7 +4,7 @@ permissions:
 
 on:
   workflow_run:
-    workflows: [Lint and Test]
+    workflows: ["Lint Format Test"]
     types: [completed]
 
 jobs:
