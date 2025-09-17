@@ -6,6 +6,7 @@ on:
   workflow_run:
     workflows: ["Lint Format Test"]
     types: [completed]
+    branches: ['**']
 
 jobs:
   tag-release:

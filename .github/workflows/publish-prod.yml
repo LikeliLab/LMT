@@ -5,9 +5,7 @@ on:
   workflow_run:
     workflows: ["Create and Push Tag"]
     types: [completed]
-  push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
   get-python-version:
