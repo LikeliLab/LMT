@@ -19,6 +19,13 @@ dependencies = [
     "tensorflow (>=2.19.0,<3.0.0)"
 ]
 
+[tool.poetry]
+name = "language-modeling-transformers"
+version = "0.2.6"
+description = ""
+authors = ["Michael Ellis <michaelellis003@gmail.com>"]
+packages = [{include = "lmt", from = "src"}]
+
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
 pyright = "^1.1.394"
