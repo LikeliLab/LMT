@@ -79,6 +79,37 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
 
+      - name: Check for existing version bump
+        id: check_bump
+        run: |
+          if git log -1 --pretty=%B | grep -q "Bump version"; then
+            echo "Version already bumped in latest commit, skipping version bump..."
+            echo "skip_bump=true" >> $GITHUB_OUTPUT
+          else
+            echo "No recent version bump found, proceeding..."
+            echo "skip_bump=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Bump version for dev release
+        if: github.ref == 'refs/heads/dev' && steps.check_bump.outputs.skip_bump == 'false'
+        run: |
+          poetry version prerelease
+          git commit -am "Bump version for dev release [skip ci]"
+          git push origin dev || {
+            echo "::error::Failed to push version bump commit"
+            exit 1
+          }
+
+      - name: Bump version for main release
+        if: github.ref == 'refs/heads/main' && steps.check_bump.outputs.skip_bump == 'false'
+        run: |
+          poetry version patch
+          git commit -am "Bump version for main release [skip ci]"
+          git push origin main || {
+            echo "::error::Failed to push version bump commit"
+            exit 1
+          }
+
       - name: Get Version
         id: get_version
         run: |
