@@ -77,3 +77,19 @@ jobs:
           git tag -a "v${VERSION}" -m "Automated release version v${VERSION}"
           git push origin "v${VERSION}"
 
+  get-branch-name:
+    needs: tag-release
+    runs-on: ubuntu-latest
+    outputs:
+      branch: ${{ steps.branch.outputs.branch }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Get branch name
+        id: branch
+        run: |
+          BRANCH_NAME=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
+          echo "Current branch: $BRANCH_NAME"
+          echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
