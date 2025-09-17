@@ -1,6 +1,6 @@
 [project]
 name = "language-modeling-transformers"
-version = "0.2.6"
+version = "0.2.7"
 description = ""
 authors = [
     {name = "Michael Ellis",email = "michaelellis003@gmail.com"}
@@ -21,7 +21,7 @@ dependencies = [
 
 [tool.poetry]
 name = "language-modeling-transformers"
-version = "0.2.6"
+version = "0.2.7"
 description = ""
 authors = ["Michael Ellis <michaelellis003@gmail.com>"]
 packages = [{include = "lmt", from = "src"}]
