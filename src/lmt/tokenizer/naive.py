@@ -39,8 +39,9 @@ class NaiveTokenizer(BaseTokenizer):
             self.int_to_str.get(i, self.unknown_str) for i in token_ids
         )
 
-        # Remove space before and after punctuation
+        # Remove space before punctuation
         text = re.sub(r'\s+([,.?!"()\'])', r'\1', text)
-        text = re.sub(r'([,.?!"()\'])\s+', r'\1', text)
+        # Remove space after specific punctuation (but not comma)
+        text = re.sub(r'([.?!"()\'])\s+', r'\1', text)
 
         return text
