@@ -19,6 +19,9 @@ dependencies = [
     "tensorflow (>=2.19.0,<3.0.0)"
 ]
 
+[tool.poetry]
+packages = [{include = "lmt", from = "src"}]
+
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
 pyright = "^1.1.394"
@@ -31,9 +34,6 @@ jupyterthemes = "^0.20.0"
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.setuptools.packages.find]
-where = ["src"]
 
 [tool.ruff]
 src = ["src"]
