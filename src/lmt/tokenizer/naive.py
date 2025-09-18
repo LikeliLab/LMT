@@ -41,7 +41,5 @@ class NaiveTokenizer(BaseTokenizer):
 
         # Remove space before punctuation
         text = re.sub(r'\s+([,.?!"()\'])', r'\1', text)
-        # Remove space after specific punctuation (but not comma)
-        text = re.sub(r'([.?!"()\'])\s+', r'\1', text)
 
         return text

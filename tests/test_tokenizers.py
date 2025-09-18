@@ -199,9 +199,10 @@ class TestNaiveTokenizer:
         decoded = tokenizer.decode(encoded)
 
         # Check that punctuation is properly attached
-        assert ', ' not in decoded  # Should be ',', not ', '
+        # Comma should have space after it, others should not
         assert '! ' not in decoded  # Should be '!', not '! '
         assert '? ' not in decoded  # Should be '?', not '? '
+        assert '. ' not in decoded  # Should be '.', not '. '
 
     def test_naive_empty_text(self):
         """Test Naive tokenizer with empty text."""
