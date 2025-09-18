@@ -1,4 +1,4 @@
-# Language Modeling Transformers (LMT)
+# Language Modeling using Transformers (LMT)
 
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.7%2B-red.svg)](https://pytorch.org/)

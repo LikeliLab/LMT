@@ -5,6 +5,7 @@ description = "A PyTorch implementation of transformer-based language models inc
 authors = [
     {name = "Michael Ellis",email = "michaelellis003@gmail.com"}
 ]
+packages = [{include = "lmt", from = "src"}]
 license = {text = "Apache-2.0"}
 readme = "README.md"
 requires-python = ">=3.11, <3.13"
