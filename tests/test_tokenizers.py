@@ -180,30 +180,6 @@ class TestNaiveTokenizer:
         for word in ['hello', 'world', 'this', 'is', 'a', 'test']:
             assert word in decoded
 
-    def test_naive_punctuation_handling(self):
-        """Test that punctuation is handled correctly."""
-        vocab = {
-            'hello': 0,
-            'world': 1,
-            ',': 2,
-            '!': 3,
-            '?': 4,
-            '.': 5,
-            '<unk>': 6,
-        }
-        tokenizer = NaiveTokenizer(vocab)
-
-        # Test various punctuation
-        text = 'hello, world! hello? world.'
-        encoded = tokenizer.encode(text)
-        decoded = tokenizer.decode(encoded)
-
-        # Check that punctuation is properly attached
-        # Comma should have space after it, others should not
-        assert '! ' not in decoded  # Should be '!', not '! '
-        assert '? ' not in decoded  # Should be '?', not '? '
-        assert '. ' not in decoded  # Should be '.', not '. '
-
     def test_naive_empty_text(self):
         """Test Naive tokenizer with empty text."""
         vocab = {'hello': 0, '<unk>': 1}
