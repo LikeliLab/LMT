@@ -61,7 +61,7 @@ class MultiHeadAttention(nn.Module):
         )
 
         self.out_proj = nn.Linear(
-            model_config.embed_dim, model_config.embed_dim
+            model_config.embed_dim, model_config.embed_dim, bias=False
         )
 
         self.register_buffer(

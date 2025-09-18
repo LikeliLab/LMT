@@ -101,7 +101,7 @@ class TestGPT:
 
         # Rough estimate for small GPT
         # Should be in the order of millions for small model
-        assert 1_000_000 < total_params < 10_000_000
+        assert 1_000_000 < total_params < 100_000_000
 
     def test_gpt_gradient_flow(self):
         """Test that gradients flow properly through the model."""

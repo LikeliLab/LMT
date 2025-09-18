@@ -267,7 +267,7 @@ class TestEndToEndTraining:
 
         training_config = BaseTrainingConfig(
             num_epochs=1,
-            eval_freq=2,
+            eval_freq=1,
             eval_iter=1,
             learning_rate=1e-4,
             weight_decay=0.01,
