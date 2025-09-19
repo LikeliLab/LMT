@@ -1,7 +1,7 @@
 [project]
 name = "language-modeling-transformers"
-version = "0.2.7"
-description = ""
+version = "0.2.8"
+description = "A PyTorch implementation of transformer-based language models including GPT architecture for pretraining and fine-tuning"
 authors = [
     {name = "Michael Ellis",email = "michaelellis003@gmail.com"}
 ]
@@ -20,10 +20,6 @@ dependencies = [
 ]
 
 [tool.poetry]
-name = "language-modeling-transformers"
-version = "0.2.7"
-description = ""
-authors = ["Michael Ellis <michaelellis003@gmail.com>"]
 packages = [{include = "lmt", from = "src"}]
 
 [tool.poetry.group.dev.dependencies]
@@ -41,7 +37,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
 src = ["src"]
-target-version = "py312" # Update this when changing .python-versions
+target-version = "py311" # Aligned with requires-python
 line-length = 79
 indent-width = 4
 
@@ -110,6 +106,6 @@ docstring-code-line-length = "dynamic"
 
 [tool.pyright]
 exclude = ["tests"]
-extraPaths = ["./.venv/lib/python3.13/site-packages", "src"]
+extraPaths = ["./.venv/lib/python3.11/site-packages", "src"]
 venvPath = "./"
 venv = ".venv"

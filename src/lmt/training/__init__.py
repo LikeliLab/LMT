@@ -12,3 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Module for training lanuage models."""
+
+from .config import BaseTrainingConfig
+from .trainer import Trainer
+
+__all__ = [
+    'BaseTrainingConfig',
+    'Trainer',
+]

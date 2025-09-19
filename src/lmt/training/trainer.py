@@ -84,7 +84,8 @@ class Trainer:
         self.model.to(self.device)
 
         # Initialize optimizer
-        # TO DO: Generalize to other optimizers
+        # TODO: Generalize to other optimizers
+        #       consider adding optimizer_type to config
         self.optimizer = torch.optim.AdamW(
             model.parameters(),
             lr=config.learning_rate,
@@ -204,7 +205,7 @@ class Trainer:
         self,
         save_subdir: Path = Path('model_weights'),
         save_name: Path = Path('model_and_optimizer.pth'),
-    ):
+    ) -> None:
         """Save model and optimizer state.
 
         Args:
@@ -226,10 +227,10 @@ class Trainer:
 
     def plot_losses(
         self,
-        x_axis_data: list,
+        x_axis_data: list[int],
         save_subdir: Path = Path('plots'),
         save_name: Path = Path('loss_plot.png'),
-    ):
+    ) -> None:
         """Plots training and validation losses and saves the figure.
 
         Args:
