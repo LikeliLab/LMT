@@ -106,6 +106,9 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Remove unused Docker images
+        run: docker system prune -af
+
       - name: Checkout
         uses: actions/checkout@v5
 
@@ -138,6 +141,9 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Remove unused Docker images
+        run: docker system prune -af
+
       - name: Checkout
         uses: actions/checkout@v5
 
