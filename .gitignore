@@ -16,3 +16,7 @@ wheels/
 # Models
 scripts/models/*
 *.pth
+
+# Data files
+data/*.csv
+data/*.tsv
