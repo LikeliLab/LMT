@@ -22,6 +22,14 @@ jobs:
     needs: get-python-version
     runs-on: ubuntu-latest
     steps:
+      - name: Free up disk space
+        run: |
+          echo "Initial disk usage:"
+          df -h
+          docker system prune -af
+          echo "After cleanup:"
+          df -h
+
       - name: Checkout
         uses: actions/checkout@v5
 
@@ -42,6 +50,9 @@ jobs:
 
       - name: Run linter and formatter
         run: poetry run pre-commit run --all-files
+
+      - name: Clean pre-commit cache
+        run: rm -rf ~/.cache/pre-commit
 
       - name: Unit Tests with pytest
         run: poetry run pytest -v --durations=0 --cov --cov-report=xml
@@ -106,9 +117,6 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Remove unused Docker images
-        run: docker system prune -af
-
       - name: Checkout
         uses: actions/checkout@v5
 
@@ -141,8 +149,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Remove unused Docker images
-        run: docker system prune -af
+      - name: Check disk space
+        run: df . -h
 
       - name: Checkout
         uses: actions/checkout@v5
